@@ -1,0 +1,31 @@
+{
+  "name": "sni-passthrough-backend",
+  "version": "0.1.0",
+  "description": "sni-passthrough backend, with additional features",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "engines": {
+    "node": "^6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wacky6/sni-passthrough-backend.git"
+  },
+  "keywords": [
+    "sni",
+    "passthrough",
+    "tls",
+    "server"
+  ],
+  "author": "wacky6",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/wacky6/sni-passthrough-backend/issues"
+  },
+  "homepage": "https://github.com/wacky6/sni-passthrough-backend#readme",
+  "devDependencies": {
+    "mocha": "^2.5.3"
+  }
+}
