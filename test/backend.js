@@ -1,15 +1,16 @@
-const {createServer} = require('../')
+const Backend = require('../')
 const tls = require('tls')
 const net = require('net')
-const {ok, strictEqual} = require('assert')
+const https = require('https')
+const {ok, strictEqual, throws} = require('assert')
 const {readFileSync: read} = require('fs')
 const {inspect} = require('util')
 const header = require('../lib/header')
 
 const frontendPort = 7443
 const backendPort  = 7444
-const serverCert = read('./server-cert.pem')
-const serverKey  = read('./server-key.pem')
+const serverCert = read('./cert.pem')
+const serverKey  = read('./key.pem')
 const opts = {
     cert: serverCert,
     key:  serverKey
@@ -32,9 +33,18 @@ function passthourghAggretage(dest, src, inject) {
     })
 }
 
-describe('constructor', function(){
-    it('return instance of TLSServer', function(){
-        ok( createServer(opts) instanceof tls.Server )
+describe('API interface', function(){
+    it('injects tls.Server', function(){
+        ok( Backend.inject( tls.createServer(opts) ) instanceof tls.Server )
+    })
+    it('refuse to inject non tls.Server', function(){
+        throws( ()=>Backend.inject({}) )
+    })
+    it('tls.Server compatible', ()=>{
+        ok( Backend.tls.createServer(opts) instanceof tls.Server )
+    })
+    it('https.Server compatible', function(){
+        ok( Backend.https.createServer(opts) instanceof https.Server )
     })
 })
 
@@ -42,7 +52,7 @@ describe('simulation', function(){
     let frontend, backend
 
     before(function(next){
-        backend = createServer(opts)
+        backend = Backend.createServer(opts)
         backend.listen(backendPort, next)
     })
     before(function(next){
@@ -53,7 +63,7 @@ describe('simulation', function(){
     it('works with compatible front-end', function(done){
         let payload = {
             address: '192.168.1.100',
-            port:    60123,
+            port:    123456,
             family:  'IPv4'
         }
         let content = '===SOCKET DATA==='
@@ -84,10 +94,7 @@ describe('simulation', function(){
         })
         backend.once('secureConnection', (tlsSocket)=>{
             tlsSocket.once('data', (data)=>{
-                ok(
-                       tlsSocket.remoteAddress.includes('127.0.0.1')
-                    || tlsSocket.remoteAddress.includes('::1')
-                )
+                strictEqual(tlsSocket.remotePort, cli.localPort)
                 strictEqual(data.toString(), content)
                 done()
             })

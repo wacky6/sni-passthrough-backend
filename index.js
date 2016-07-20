@@ -2,29 +2,69 @@
 
 const tls = require('tls')
 const net = require('net')
+const https = require('https')
+const assert = require('assert').ok
 const unwrap = require('./lib/unwrap')
+const {inherits} = require('util')
 
 const plugins = [
     require('./plugins/peername')
 ]
 
-function createSNIBackendServer(opts, listener) {
-    let tlsServer = tls.createServer(opts, listener)
+function injectConnectionHandler(server) {
+    if ( ! server instanceof tls.Server )
+        throw new Error('SNIBackend: must be compatible with tls.Server')
 
-    // modify TLSServer's connection listener to parse injected header
-    let TLSServerConnectionListener = tlsServer.listeners('connection')[0]
-    tlsServer.removeListener('connection', TLSServerConnectionListener)
-    tlsServer.addListener('connection', (raw) =>
-        unwrap(raw, (payload) => {
+    let listeners = server.listeners('connection').slice()
+
+    assert( listeners.length>0, 'Connection listeners should be added' )
+
+    server.removeAllListeners('connection')
+    server.addListener('connection', (raw)=>{
+        unwrap(raw, (payload)=>{
             if (payload !== undefined)
                 plugins.forEach( plugin => plugin(raw, payload) )
-            TLSServerConnectionListener(raw)
+            listeners.forEach( listener => listener.call(this, raw) )
         })
-    )
+    })
 
-    return tlsServer
+    return server
+}
+
+
+function SNIBackendTLS(...args) {
+    tls.Server.call(this, ...args)
+    // allows listeners to be added
+    process.nextTick( ()=>injectConnectionHandler(this) )
+}
+inherits(SNIBackendTLS, tls.Server)
+
+
+function SNIBackendHTTPS(...args) {
+    https.Server.call(this, ...args)
+    // allows listeners to be added
+    process.nextTick( ()=>injectConnectionHandler(this) )
+}
+inherits(SNIBackendHTTPS, https.Server)
+
+
+function createSNIBackendTLS(...args) {
+    return new SNIBackendTLS(...args)
+}
+
+function createSNIBackendHTTPS(...args) {
+    return new SNIBackendHTTPS(...args)
 }
 
 module.exports = {
-    createServer: createSNIBackendServer
+    inject: injectConnectionHandler,
+    createServer: createSNIBackendTLS,
+    tls: {
+        createServer: createSNIBackendTLS,
+        Server:       SNIBackendTLS
+    },
+    https: {
+        createServer: createSNIBackendHTTPS,
+        Server:       SNIBackendHTTPS
+    }
 }

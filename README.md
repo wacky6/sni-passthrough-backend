@@ -1,26 +1,45 @@
 SNI Passthrough Backend
 ===
-TLSServer Compatible  
-X-Real-IP work-around for TLS-SNI (Layer 4) Reverse Proxy
+tls.Server, https.Server Compatible  
+X-Real-IP work-around for TLS-SNI (Layer 4) Proxy
 
 ## Usage
 
-** !!!! Currently sni-passthrough front-end is not implemented !!!! **
-
 Designed to work with [sni-passthrough](https://github.com/wacky6/sni-passthrough)
 
-#### Back-end:
+#### Back-end Example:
 ```JavaScript
-const createServer = require('sni-passthrough-backend')
+const Backend = require('sni-passthrough-backend')
 const opts = { /* same as TLS.createServer */ }
 
 // don't listen on publicly accessible address
 // or malicious user can spoof ip address / etc.
-let svr = createServer(opts).listen(10443, '::1')
+let svr = Backend.createServer(opts).listen(10443, '::1')
 svr.on('secureConnection', (socket)=>{
     socket.remoteAddress
     // -> get remote's address as if running on public internet
 })
+
+// work with spdy/https
+const spdy = require('spdy')
+const HttpsBackend = require('sni-passthrough-backend').https.Server
+spdy.createServer(HttpsBackend, opts, (req, res)=>{})
+```
+
+#### API
+```JavaScript
+module.exports = {
+    inject: (server) => injected,   // => inject connection handler to server
+    createServer,                   // => same as module.exports.tls.createServer
+    tls: {
+        Server,        // => wrapped tls.Server
+        createServer   // => wrapped tls.createServer
+    },
+    https: {
+        Server,        // => wrapped https.Server
+        createServer   // => wrapped https.createServer
+    }
+}
 ```
 
 
@@ -45,7 +64,7 @@ In SNI-1, remote address is front-end's address, not good for applications
 iPkt is injected as the first packet to SNI-1, containing some payload.
 [SNI-1] intercepts and processes iPkt, then proceed as if normal TLS connection
 
-Internally, hijacks net.Server's `'connection'` listener after TLS.createServer
+Internally, hijacks tls.Server's `'connection'` event
 ```
 
 #### Time Sequence
@@ -58,10 +77,15 @@ Client-Hello    --->
 ```
 
 
-
 ## Note
 May be a `X-Forwarded-For` TLS Extension ?
 
+
+## Testing
+1. `npm install`
+2. Generate key, self-sign certificate
+3. Put them at `key.pem`, `cert.pem`
+4. In terminal, run `mocha`
 
 
 ## LICENSE

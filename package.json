@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/wacky6/sni-passthrough-backend#readme",
   "devDependencies": {
-    "mocha": "^2.5.3"
+    "mocha": "^2.5.3",
+    "spdy": "^3.3.4"
   }
 }
